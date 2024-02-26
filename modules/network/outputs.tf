@@ -17,7 +17,6 @@ output "vpc_subnet" {
       cidr       = subnet_output.cidr
       gateway_ip = subnet_output.gateway_ip
       vpc_id     = subnet_output.vpc_id
-
     }
   })
 }

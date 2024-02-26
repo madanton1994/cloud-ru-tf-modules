@@ -18,6 +18,11 @@ variable "default_tags" {
   type        = map(string)
 }
 
+# variable "enterprise_project_id" {}
+variable "environment" {}
+variable "project" {}
+
+
 variable "network" {
   description = "Network"
   type = map(object({
@@ -44,3 +49,7 @@ variable "network" {
 
   }))
 }
+
+# variable "enterprise_project_id" {
+#   type = string
+# }

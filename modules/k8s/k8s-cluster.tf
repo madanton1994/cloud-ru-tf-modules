@@ -1,6 +1,6 @@
 resource "sbercloud_cce_cluster" "cce_cluster" {
-  for_each                         = { for k8s in local.cluster_config : "${k8s.name}" => k8s }
-  name                             = each.value.name
+  for_each                         = { for k8s in local.cluster_config : "${var.project}.${var.environment}.${k8s.name}" => k8s }
+  name                             = "${var.project}-${var.environment}-${each.value.name}"
   flavor_id                        = each.value.flavor_id
   vpc_id                           = each.value.vpc_id
   subnet_id                        = each.value.subnet_id
