@@ -1,6 +1,6 @@
 # resource "null_resource" "set_initial_state" {
-#   depends_on = [sbercloud_cce_cluster.cce_cluster]
-#   for_each   = sbercloud_cce_cluster.cce_cluster
+#   depends_on = [huaweicloud_cce_cluster.cce_cluster]
+#   for_each   = huaweicloud_cce_cluster.cce_cluster
 #   provisioner "local-exec" {
 #     interpreter = ["bash", "-c"]
 #     command     = "sleep 10"
@@ -12,23 +12,25 @@
 #   create_duration = "15s"
 
 #   depends_on = [
-#     sbercloud_cce_cluster.cce_cluster,
+#     huaweicloud_cce_cluster.cce_cluster,
 #     null_resource.set_initial_state
 #   ]
 # }
 
 
 
-resource "sbercloud_cce_node_pool" "k8s_node_pool" {
-  depends_on               = [sbercloud_cce_cluster.cce_cluster]
+resource "huaweicloud_cce_node_pool" "k8s_node_pool" {
+  depends_on               = [huaweicloud_cce_cluster.cce_cluster]
   for_each                 = { for node_pool in local.node_pools : "${var.project}.${var.environment}.${node_pool.name}" => node_pool }
-  cluster_id               = data.sbercloud_cce_cluster.cluster[each.value.cluster_name].id
+  cluster_id               = data.huaweicloud_cce_cluster.cluster[each.value.cluster_name].id
   name                     = "${var.project}-${var.environment}-${each.value.name}"
   os                       = each.value.os
+  runtime                  = each.value.runtime
   flavor_id                = each.value.flavor_id
   initial_node_count       = each.value.initial_node_count
   availability_zone        = each.value.availability_zone
-  key_pair                 = each.value.key_pair
+  key_pair                 = each.value.password == null ? var.kms_key_pairs["${each.value.key_pair_name}"].id : null
+  # key_pair                 = each.value.key_pair
   password                 = each.value.password
   scall_enable             = each.value.scall_enable
   min_node_count           = each.value.min_node_count

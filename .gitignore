@@ -1,0 +1,13 @@
+.idea/
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.*
+.DS_Store
+
+credentials
+
+cloud_config_def.yaml
+**/provider.tf
+**/backend.tf
+terraform/create-s3-tfstates/*.backup

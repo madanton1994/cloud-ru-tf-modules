@@ -1,4 +1,6 @@
-variable "vpc_input" {
+variable "vpc_input" {}
+variable "vpc_subnet" {}
+variable "kms_key_pairs" {
   type = map(any)
 }
 

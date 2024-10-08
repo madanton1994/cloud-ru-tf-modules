@@ -1,59 +1,49 @@
-data "sbercloud_vpcs" "vpc" {
+data "huaweicloud_vpcs" "vpc" {
   enterprise_project_id = var.enterprise_project_id
-  tags = {
-    data-selector = "k8s-vpc"
-    project       = "sberinsur"
-    subproject    = "claims"
-    managed       = "terraform"
-  }
 }
 
-data "sbercloud_vpc" "vpc" {
-  for_each = { for vpc_data in data.sbercloud_vpcs.vpc.vpcs : "${vpc_data.id}" => vpc_data }
+data "huaweicloud_vpc" "vpc" {
+  for_each = { for vpc_data in data.huaweicloud_vpcs.vpc.vpcs : "${vpc_data.id}" => vpc_data }
   id       = each.value.id
 }
 
-data "sbercloud_vpc_subnets" "subnet_masters" {
-  for_each = { for vpc_data in data.sbercloud_vpcs.vpc.vpcs : "${vpc_data.id}" => vpc_data }
+data "huaweicloud_vpc_subnets" "subnet_masters" {
+  for_each = { for vpc_data in data.huaweicloud_vpcs.vpc.vpcs : "${vpc_data.id}" => vpc_data }
   vpc_id   = each.value.id
   tags = {
-    subproject    = "claims"
-    resource-type = "subnet"
-    data-selector = "k8s-cce-subnet"
+    "data-selector" = "k8s-cce-subnet"
   }
 }
 
-data "sbercloud_vpc_subnets" "subnet_eni" {
-  for_each = { for vpc_data in data.sbercloud_vpcs.vpc.vpcs : "${vpc_data.id}" => vpc_data }
+data "huaweicloud_vpc_subnets" "subnet_eni" {
+  for_each = { for vpc_data in data.huaweicloud_vpcs.vpc.vpcs : "${vpc_data.id}" => vpc_data }
   vpc_id   = each.value.id
   tags = {
-    subproject    = "claims"
-    resource-type = "subnet"
-    data-selector = "k8s-cce-subnet-eni"
+    "data-selector" = "k8s-cce-subnet-eni"
   }
-}
 
-data "sbercloud_cce_clusters" "clusters" {
-  depends_on = [sbercloud_cce_cluster.cce_cluster]
+}
+data "huaweicloud_cce_clusters" "clusters" {
+  depends_on = [huaweicloud_cce_cluster.cce_cluster]
   for_each   = { for k8s in local.cluster_config : "${k8s.name}" => k8s }
   name       = each.value.name
 }
 
-data "sbercloud_cce_cluster" "cluster" {
-  depends_on = [data.sbercloud_cce_clusters.clusters]
-  for_each   = { for clusters in data.sbercloud_cce_clusters.clusters : "${var.project}-${var.environment}-${clusters.name}" => clusters }
+data "huaweicloud_cce_cluster" "cluster" {
+  depends_on = [data.huaweicloud_cce_clusters.clusters]
+  for_each   = { for clusters in data.huaweicloud_cce_clusters.clusters : "${var.project}-${var.environment}-${clusters.name}" => clusters }
   name       = each.key
   # status   = "Available"
 }
 
 
-# data "sbercloud_cce_cluster" "cluster_name_id" {
-#   depends_on = [sbercloud_cce_cluster.cce_cluster]
+# data "huaweicloud_cce_cluster" "cluster_name_id" {
+#   depends_on = [huaweicloud_cce_cluster.cce_cluster]
 #   for_each   = { for cluster_name, cluster_config in var.k8s_cluster : "${cluster_name}" => cluster_name }
 #   name       = each.key
 # }
 
-# data "sbercloud_cce_cluster" "cluster" {
+# data "huaweicloud_cce_cluster" "cluster" {
 #   depends_on = [  ]
 #   for_each = { for k8s_cluster_config in var.k8s_cluster : "${k8s_cluster_config.name}" => k8s_cluster_config }
 #   name     = each.value.name
@@ -62,9 +52,9 @@ data "sbercloud_cce_cluster" "cluster" {
 locals {
   cluster_config = distinct(flatten([
     for k8s_cluster_name, k8s_cluster_config in var.k8s_cluster : [
-      for vpc_data in data.sbercloud_vpc.vpc : [
-        for subnet_masters in data.sbercloud_vpc_subnets.subnet_masters : [
-          for subnet_eni in data.sbercloud_vpc_subnets.subnet_eni : {
+      for vpc_data in data.huaweicloud_vpc.vpc : [
+        for subnet_masters in data.huaweicloud_vpc_subnets.subnet_masters : [
+          for subnet_eni in data.huaweicloud_vpc_subnets.subnet_eni : {
             name                             = k8s_cluster_name
             flavor_id                        = k8s_cluster_config.flavor_id
             vpc_id                           = vpc_data.id
@@ -104,44 +94,46 @@ locals {
   node_pools = distinct(flatten([
     for k8s_cluster_name, k8s_cluster_config in var.k8s_cluster : [
       for k8s_node_pool_name, k8s_node_pool_config in k8s_cluster_config.node_pools : [
-        for subnet_masters in data.sbercloud_vpc_subnets.subnet_masters : [
-          for cluster_data_id in data.sbercloud_cce_cluster.cluster : {
-            region = k8s_cluster_config.region
-            # cluster_id               = cluster_data_id.id
-            name                     = k8s_node_pool_name
-            initial_node_count       = k8s_node_pool_config.initial_node_count
-            flavor_id                = k8s_node_pool_config.flavor_id
-            type                     = k8s_node_pool_config.type
-            availability_zone        = k8s_node_pool_config.availability_zone
-            os                       = k8s_node_pool_config.os
-            key_pair                 = k8s_node_pool_config.password != null ? k8s_node_pool_config.key_pair : ""
-            password                 = k8s_node_pool_config.key_pair != null ? null : k8s_node_pool_config.password == null ? null : k8s_node_pool_config.password
-            subnet_id                = subnet_masters.subnets[0].id
-            max_pods                 = k8s_node_pool_config.max_pods != null ? k8s_node_pool_config.max_pods : null
-            ecs_group_id             = k8s_node_pool_config.ecs_group_id
-            preinstall               = k8s_node_pool_config.preinstall != null ? k8s_node_pool_config.preinstall : null   #The input value can be a Base64 encoded string or not
-            postinstall              = k8s_node_pool_config.postinstall != null ? k8s_node_pool_config.postinstall : null #The input value can be a Base64 encoded string or not
-            extend_param             = k8s_node_pool_config.extend_param
-            scall_enable             = k8s_node_pool_config.scall_enable
-            min_node_count           = k8s_node_pool_config.min_node_count
-            max_node_count           = k8s_node_pool_config.max_node_count
-            scale_down_cooldown_time = k8s_node_pool_config.scale_down_cooldown_time
-            priority                 = k8s_node_pool_config.priority
-            security_groups          = k8s_node_pool_config.security_groups
-            pod_security_groups      = k8s_node_pool_config.pod_security_groups
-            labels                   = k8s_node_pool_config.labels
-            tags                     = merge(var.default_tags, coalesce(k8s_node_pool_config.tags, var.default_tags))
-            root_volume              = k8s_node_pool_config.root_volume
-            data_volumes             = k8s_node_pool_config.data_volumes
-            charging_mode            = k8s_node_pool_config.charging_mode
-            period_unit              = k8s_node_pool_config.period_unit
-            period                   = k8s_node_pool_config.period
-            auto_renew               = k8s_node_pool_config.auto_renew
-            runtime                  = k8s_node_pool_config.runtime
-            taints                   = k8s_node_pool_config.taints == null ? {} : k8s_node_pool_config.taints
-            storage                  = k8s_node_pool_config.storage
-            cluster_name             = "${var.project}-${var.environment}-${k8s_cluster_name}"
-          }
+        for subnet_masters in data.huaweicloud_vpc_subnets.subnet_masters : [
+          for key_pair_name, key_pair_data in var.kms_key_pairs : [
+            for cluster_data_id in data.huaweicloud_cce_cluster.cluster : {
+              region = k8s_cluster_config.region
+              name                     = k8s_node_pool_name
+              initial_node_count       = k8s_node_pool_config.initial_node_count
+              flavor_id                = k8s_node_pool_config.flavor_id
+              type                     = k8s_node_pool_config.type
+              availability_zone        = k8s_node_pool_config.availability_zone
+              os                       = k8s_node_pool_config.os
+              # key_pair                 = k8s_node_pool_config.password == null ? var.kms_key_pairs["sberinsur.develop.develop_kms_node_pool_keypair_k8s"].id : null
+              password                 = k8s_node_pool_config.key_pair != null ? null : k8s_node_pool_config.password == null ? null : k8s_node_pool_config.password
+              subnet_id                = subnet_masters.subnets[0].id
+              max_pods                 = k8s_node_pool_config.max_pods != null ? k8s_node_pool_config.max_pods : null
+              ecs_group_id             = k8s_node_pool_config.ecs_group_id
+              preinstall               = k8s_node_pool_config.preinstall != null ? k8s_node_pool_config.preinstall : null   #The input value can be a Base64 encoded string or not
+              postinstall              = k8s_node_pool_config.postinstall != null ? k8s_node_pool_config.postinstall : null #The input value can be a Base64 encoded string or not
+              extend_param             = k8s_node_pool_config.extend_param
+              scall_enable             = k8s_node_pool_config.scall_enable
+              min_node_count           = k8s_node_pool_config.min_node_count
+              max_node_count           = k8s_node_pool_config.max_node_count
+              scale_down_cooldown_time = k8s_node_pool_config.scale_down_cooldown_time
+              priority                 = k8s_node_pool_config.priority
+              security_groups          = k8s_node_pool_config.security_groups
+              pod_security_groups      = k8s_node_pool_config.pod_security_groups
+              labels                   = k8s_node_pool_config.labels
+              tags                     = merge(var.default_tags, coalesce(k8s_node_pool_config.tags, var.default_tags))
+              root_volume              = k8s_node_pool_config.root_volume
+              data_volumes             = k8s_node_pool_config.data_volumes
+              charging_mode            = k8s_node_pool_config.charging_mode
+              period_unit              = k8s_node_pool_config.period_unit
+              period                   = k8s_node_pool_config.period
+              auto_renew               = k8s_node_pool_config.auto_renew
+              runtime                  = k8s_node_pool_config.runtime
+              taints                   = k8s_node_pool_config.taints == null ? {} : k8s_node_pool_config.taints
+              storage                  = k8s_node_pool_config.storage
+              cluster_name             = "${var.project}-${var.environment}-${k8s_cluster_name}"
+              key_pair_name = key_pair_name
+            }
+          ]
         ]
       ]
     ]
@@ -152,7 +144,7 @@ locals {
 
   nlb_config = distinct(flatten([
     for nlb_name, nlb_config in var.nlb_config : [
-      for subnet_ingress_nodes in data.sbercloud_vpc_subnets.subnet_masters : {
+      for subnet_ingress_nodes in data.huaweicloud_vpc_subnets.subnet_masters : {
         name                  = nlb_name
         description           = nlb_config.description == null ? null : nlb_config.description
         vip_subnet_id         = nlb_config.vip_subnet_id == null ? subnet_ingress_nodes.subnets[0].ipv4_subnet_id : nlb_config.vip_subnet_id

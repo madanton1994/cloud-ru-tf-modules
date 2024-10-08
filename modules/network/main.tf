@@ -1,7 +1,8 @@
 terraform {
   required_providers {
-    sbercloud = {
-      source = "tf.repo.sbc.space/sbercloud-terraform/sbercloud"
+    huaweicloud = {
+      source  = "huaweicloud/huaweicloud"
+      version = "= 1.67.0"
     }
   }
 }

@@ -1,7 +1,7 @@
 output "vpc" {
   description = "value"
   value = tomap({
-    for k, vpc_output in sbercloud_vpc.vpc : k => {
+    for k, vpc_output in huaweicloud_vpc.vpc : k => {
       id     = vpc_output.id
       status = vpc_output.status
       cidr   = vpc_output.cidr
@@ -11,7 +11,7 @@ output "vpc" {
 output "vpc_subnet" {
   description = "value"
   value = tomap({
-    for k, subnet_output in sbercloud_vpc_subnet.cce_vpc_subnet : k => {
+    for k, subnet_output in huaweicloud_vpc_subnet.cce_vpc_subnet : k => {
       id         = subnet_output.id
       name       = subnet_output.name
       cidr       = subnet_output.cidr
